@@ -1,26 +1,33 @@
 package core.basesyntax;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import core.basesyntax.dao.StorageDao;
+import core.basesyntax.dao.StorageDaoImpl;
+import core.basesyntax.db.Storage;
 import core.basesyntax.exception.InvalidAgeException;
 import core.basesyntax.exception.InvalidLoginException;
 import core.basesyntax.exception.InvalidPasswordException;
 import core.basesyntax.exception.InvalidRegistrationDataException;
+import core.basesyntax.exception.UserAlreadyExistException;
 import core.basesyntax.model.User;
 import core.basesyntax.service.RegistrationValidator;
 import core.basesyntax.service.RegistrationValidatorImpl;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class RegistrationTest {
     private final RegistrationValidator registrationValidator = new RegistrationValidatorImpl();
+    private final StorageDao storageDao = new StorageDaoImpl();
     private User testUserValid;
     private User testUserInvalid;
 
-    @BeforeAll
+    @BeforeEach
     void setUp() {
         testUserValid = new User();
         testUserInvalid = new User();
@@ -37,40 +44,83 @@ public class RegistrationTest {
     }
 
     @Test
-    void containsValidLogin_Ok() {
+    void storageAddUser_storageAddUser_Ok() {
+        storageDao.add(testUserValid);
+        boolean expected = true;
+        boolean actual = Storage.people.contains(testUserValid);
+        assertEquals(expected, actual);
+        Storage.people.remove(testUserValid);
+    }
+
+    @Test
+    void isNewUser_newUser_Ok() {
+        User user = storageDao.get(testUserValid.getLogin());
+        assertNull(user);
+    }
+
+    @Test
+    void isLoginValid_validLogin_Ok() {
         boolean actual = registrationValidator.isLoginValid(testUserValid);
         assertTrue(actual);
 
     }
 
     @Test
-    void containsValidPassword_Ok() {
+    void isValidLoginMinLength_Ok() {
+        testUserValid.setLogin("userUs");
+        boolean actual = registrationValidator.isLoginValid(testUserValid);
+        assertTrue(actual);
+    }
+
+    @Test
+    void isValidPassword_validPassword_Ok() {
         boolean actual = registrationValidator.isPasswordValid(testUserValid);
         assertTrue(actual);
     }
 
     @Test
-    void containsValidAge_Ok() {
+    void isValidPasswordMinLength_Ok() {
+        testUserValid.setPassword("minmin");
+        boolean actual = registrationValidator.isPasswordValid(testUserValid);
+        assertTrue(actual);
+    }
+
+    @Test
+    void isValidAge_validAge_Ok() {
         boolean actual = registrationValidator.isValidAge(testUserValid);
         assertTrue(actual);
     }
 
     @Test
-    void isValidRegistrationData_Ok() {
-        boolean actual = registrationValidator.isValidRegistrationData(testUserValid);
+    void isMinValidAge_Ok() {
+        testUserValid.setAge(18);
+        boolean actual = registrationValidator.isValidAge(testUserValid);
         assertTrue(actual);
     }
 
     @Test
-    void isValidRegistrationData_notOk() {
+    void isValidRegistrationData_validRegistrationData_Ok() {
+        boolean actual = registrationValidator.validateRegistrationData(testUserValid);
+        assertTrue(actual);
+    }
+
+    @Test
+    void isValidRegistrationData_registrationData_notOk() {
         assertThrows(
                 InvalidRegistrationDataException.class,
-                () -> registrationValidator.isValidRegistrationData(testUserInvalid)
+                () -> registrationValidator.validateRegistrationData(testUserInvalid)
         );
     }
 
     @Test
-    void containsValidLogin_notOK() {
+    void isNewUser_newUser_notOk() {
+        User user = storageDao.add(testUserValid);
+        assertThrows(UserAlreadyExistException.class, () -> registrationValidator.isUserNew(user));
+        Storage.people.remove(testUserValid);
+    }
+
+    @Test
+    void isValidLogin_login_notOK() {
         assertThrows(
                 InvalidLoginException.class,
                 () -> registrationValidator.isLoginValid(testUserInvalid)
@@ -78,14 +128,14 @@ public class RegistrationTest {
     }
 
     @Test
-    void containsValidPassword_notOk() {
+    void isValidPassword_password_notOk() {
         assertThrows(InvalidPasswordException.class,
                 () -> registrationValidator.isPasswordValid(testUserInvalid)
         );
     }
 
     @Test
-    void containsValidAge_notOk() {
+    void isValidAge_age_notOk() {
         assertThrows(InvalidAgeException.class,
                 () -> registrationValidator.isValidAge(testUserInvalid)
         );
