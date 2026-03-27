@@ -14,6 +14,8 @@ import core.basesyntax.exception.InvalidPasswordException;
 import core.basesyntax.exception.InvalidRegistrationDataException;
 import core.basesyntax.exception.UserAlreadyExistException;
 import core.basesyntax.model.User;
+import core.basesyntax.service.RegistrationService;
+import core.basesyntax.service.RegistrationServiceImpl;
 import core.basesyntax.service.RegistrationValidator;
 import core.basesyntax.service.RegistrationValidatorImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +24,7 @@ import org.junit.jupiter.api.TestInstance;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class RegistrationTest {
+    private final RegistrationService registrationService = new RegistrationServiceImpl();
     private final RegistrationValidator registrationValidator = new RegistrationValidatorImpl();
     private final StorageDao storageDao = new StorageDaoImpl();
     private User testUserValid;
@@ -40,12 +43,13 @@ public class RegistrationTest {
         testUserInvalid.setPassword("pass");
         testUserInvalid.setAge(15);
         testUserInvalid.setId(1L);
+        Storage.people.remove(testUserValid);
 
     }
 
     @Test
-    void storageAddUser_storageAddUser_Ok() {
-        storageDao.add(testUserValid);
+    void registerUser_Ok() {
+        registrationService.register(testUserValid);
         boolean expected = true;
         boolean actual = Storage.people.contains(testUserValid);
         assertEquals(expected, actual);
@@ -113,16 +117,42 @@ public class RegistrationTest {
     }
 
     @Test
+    void isValidRegistrationData_registrationDataIsNull_notOk() {
+        testUserInvalid = null;
+        assertThrows(
+                InvalidRegistrationDataException.class,
+                () -> registrationValidator.validateRegistrationData(testUserInvalid)
+        );
+    }
+
+    @Test
     void isNewUser_newUser_notOk() {
         User user = storageDao.add(testUserValid);
         assertThrows(UserAlreadyExistException.class, () -> registrationValidator.isUserNew(user));
-        Storage.people.remove(testUserValid);
     }
 
     @Test
     void isValidLogin_login_notOK() {
         assertThrows(
                 InvalidLoginException.class,
+                () -> registrationValidator.isLoginValid(testUserInvalid)
+        );
+    }
+
+    @Test
+    void isValidLogin_loginLength_notOK() {
+        testUserInvalid.setLogin("ulog1");
+        assertThrows(
+                InvalidLoginException.class,
+                () -> registrationValidator.isLoginValid(testUserInvalid)
+        );
+    }
+
+    @Test
+    void isValidLogin_loginIsNull_notOK() {
+        testUserInvalid.setLogin(null);
+        assertThrows(
+                InvalidRegistrationDataException.class,
                 () -> registrationValidator.isLoginValid(testUserInvalid)
         );
     }
@@ -135,8 +165,40 @@ public class RegistrationTest {
     }
 
     @Test
+    void isValidPassword_passwordLength_notOk() {
+        testUserInvalid.setPassword("12345");
+        assertThrows(InvalidPasswordException.class,
+                () -> registrationValidator.isPasswordValid(testUserInvalid)
+        );
+    }
+
+    @Test
+    void isValidPassword_passwordIsNull_notOk() {
+        testUserInvalid.setPassword(null);
+        assertThrows(InvalidRegistrationDataException.class,
+                () -> registrationValidator.isPasswordValid(testUserInvalid)
+        );
+    }
+
+    @Test
     void isValidAge_age_notOk() {
         assertThrows(InvalidAgeException.class,
+                () -> registrationValidator.isValidAge(testUserInvalid)
+        );
+    }
+
+    @Test
+    void isValidAge_ageIsLessThanMin_notOk() {
+        testUserInvalid.setAge(17);
+        assertThrows(InvalidAgeException.class,
+                () -> registrationValidator.isValidAge(testUserInvalid)
+        );
+    }
+
+    @Test
+    void isValidAge_ageIsNull_notOk() {
+        testUserInvalid.setAge(null);
+        assertThrows(InvalidRegistrationDataException.class,
                 () -> registrationValidator.isValidAge(testUserInvalid)
         );
     }

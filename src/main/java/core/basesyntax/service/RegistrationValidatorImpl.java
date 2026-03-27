@@ -95,7 +95,7 @@ public class RegistrationValidatorImpl implements RegistrationValidator {
     public boolean isValidAge(User user) {
         if (user.getAge() == null) {
             throw new InvalidRegistrationDataException(
-                    "Could not register user. Age cannot be null"
+                    "Could not register user. Invalid age parameter"
             );
         }
 
